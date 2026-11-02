@@ -14,4 +14,15 @@ return [
     // Gmail account used to send the email reports (use a Google App Password)
     'mail_address' => 'you@example.com',
     'mail_app_password' => 'xxxx xxxx xxxx xxxx',
+
+    // Where the reports go (defaults to mail_address)
+    'report_email' => 'you@example.com',
+
+    // Telegram bot from @BotFather, and your chat id
+    // (send your bot a message, then run: php cron.php --telegram-chat-id)
+    'telegram_bot_token' => '',
+    'telegram_chat_id' => '',
+
+    // Local time zone used for "today" and the scheduled reports
+    'timezone' => 'Africa/Cairo',
 ];

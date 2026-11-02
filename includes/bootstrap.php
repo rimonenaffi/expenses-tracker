@@ -9,6 +9,9 @@ $config = file_exists(APP_ROOT . '/config.php')
     ? require APP_ROOT . '/config.php'
     : require APP_ROOT . '/config.example.php';
 
+// The server runs on UTC; dates should follow your local day
+date_default_timezone_set($config['timezone'] ?? 'Africa/Cairo');
+
 // Stored values stay in English; they are translated only for display
 $categories = ['Food', 'Cafe', 'Rent', 'Transport', 'Entertainment', 'Utilities', 'Shopping', 'Healthcare', 'Other'];
 

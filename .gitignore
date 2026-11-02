@@ -6,3 +6,4 @@ data/expenses.json
 
 .DS_Store
 Thumbs.db
+data/cron_state.json

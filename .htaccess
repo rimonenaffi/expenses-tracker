@@ -4,7 +4,7 @@ allow from 41.64.174.120
 # DO NOT REMOVE THIS LINE AND THE LINES ABOVE Y5uy3dXpTi:IPALLOWID
 
 
-# Never serve the secrets file
-<Files "config.php">
+# Never serve the secrets file or the cron script
+<FilesMatch "^(config|cron)\.php$">
     Require all denied
-</Files>
+</FilesMatch>
