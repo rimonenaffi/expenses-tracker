@@ -1,0 +1,8 @@
+# Secrets - copy config.example.php to config.php on each server
+config.php
+
+# Personal expense data lives only on the server
+data/expenses.json
+
+.DS_Store
+Thumbs.db

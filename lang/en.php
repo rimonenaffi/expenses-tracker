@@ -1,0 +1,105 @@
+<?php
+return [
+    'app_title'        => 'Expense Tracker',
+    'subtitle'         => 'Track your spending with ease',
+    'welcome'          => 'Welcome, %s',
+    'logout'           => 'Logout',
+    'currency'         => 'E£',
+    'toggle_theme'     => 'Toggle dark mode',
+    'switch_lang'      => 'العربية',
+
+    // Summary cards
+    'total_expenses'   => 'Total Expenses',
+    'average'          => 'Average',
+    'per_expense'      => 'Per expense',
+    'transactions'     => 'Transactions',
+    'top_category'     => 'Top category: %s',
+    'no_data'          => 'No data',
+
+    // Periods
+    'period'           => 'Period',
+    'period_30days'    => 'Last 30 days',
+    'period_thismonth' => 'This month',
+    'period_lastmonth' => 'Last month',
+    'period_month'     => 'Pick a month',
+    'period_custom'    => 'Custom range',
+    'period_all'       => 'All time',
+    'month'            => 'Month',
+    'from'             => 'From',
+    'to'               => 'To',
+
+    // Form
+    'add_expense'      => 'Add New Expense',
+    'description'      => 'Description',
+    'description_ph'   => 'What was this expense for?',
+    'amount'           => 'Amount (E£)',
+    'date'             => 'Date',
+    'category'         => 'Category',
+    'place'            => 'Place / Facility',
+    'place_ph'         => 'e.g. Starbucks, Carrefour (optional)',
+    'save_expense'     => 'Add Expense',
+
+    // Chart
+    'overview'         => 'Expense Overview',
+    'chart_pie'        => 'Doughnut',
+    'chart_bar'        => 'Bar',
+    'chart_line'       => 'Trend',
+    'daily_spending'   => 'Spending',
+    'total'            => 'Total',
+    'no_chart_data'    => 'No expenses in this period yet',
+
+    // History
+    'transactions_history' => 'Transactions History',
+    'search'           => 'Search',
+    'search_ph'        => 'Search description or place…',
+    'all_categories'   => 'All categories',
+    'apply'            => 'Apply',
+    'reset'            => 'Reset',
+    'showing'          => 'Showing %d transactions · %s',
+    'email_report'     => 'Email Report',
+    'export_excel'     => 'Export to Excel',
+    'no_expenses'      => 'No expenses found for this period.',
+    'action'           => 'Action',
+    'previous'         => 'Previous',
+    'next'             => 'Next',
+
+    // Modal / JS
+    'send_report'      => 'Send Report',
+    'select_period'    => 'Select the period for your report:',
+    'last_3_days'      => 'Last 3 Days',
+    'last_7_days'      => 'Last 7 Days',
+    'last_30_days'     => 'Last 30 Days',
+    'cancel'           => 'Cancel',
+    'close'            => 'Close',
+    'sending'          => 'Sending Report...',
+    'sent'             => 'Sent Successfully!',
+    'check_inbox'      => 'Check your inbox.',
+    'error'            => 'Error',
+    'went_wrong'       => 'Something went wrong!',
+    'enter_pin'        => 'Enter PIN to export:',
+    'wrong_pin'        => 'Incorrect PIN!',
+    'confirm_delete'   => 'Are you sure you want to delete this expense?',
+
+    // Login
+    'welcome_back'     => 'Welcome back',
+    'sign_in_to'       => 'Sign in to your Expense Tracker account',
+    'username'         => 'Username',
+    'username_ph'      => 'Enter your username',
+    'password'         => 'Password',
+    'password_ph'      => 'Enter your password',
+    'sign_in'          => 'Sign In',
+    'invalid_login'    => 'Invalid username or password',
+
+    // Categories
+    'cat_food'          => 'Food',
+    'cat_cafe'          => 'Cafe',
+    'cat_rent'          => 'Rent',
+    'cat_transport'     => 'Transport',
+    'cat_entertainment' => 'Entertainment',
+    'cat_utilities'     => 'Utilities',
+    'cat_shopping'      => 'Shopping',
+    'cat_healthcare'    => 'Healthcare',
+    'cat_other'         => 'Other',
+
+    'months_short' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+];

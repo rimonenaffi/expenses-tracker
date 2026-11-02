@@ -1,0 +1,105 @@
+<?php
+return [
+    'app_title'        => 'متتبع المصروفات',
+    'subtitle'         => 'تابع مصروفاتك بكل سهولة',
+    'welcome'          => 'أهلاً، %s',
+    'logout'           => 'تسجيل الخروج',
+    'currency'         => 'ج.م',
+    'toggle_theme'     => 'تبديل الوضع الليلي',
+    'switch_lang'      => 'English',
+
+    // Summary cards
+    'total_expenses'   => 'إجمالي المصروفات',
+    'average'          => 'المتوسط',
+    'per_expense'      => 'لكل عملية',
+    'transactions'     => 'المعاملات',
+    'top_category'     => 'الأعلى إنفاقاً: %s',
+    'no_data'          => 'لا توجد بيانات',
+
+    // Periods
+    'period'           => 'الفترة',
+    'period_30days'    => 'آخر 30 يوم',
+    'period_thismonth' => 'هذا الشهر',
+    'period_lastmonth' => 'الشهر الماضي',
+    'period_month'     => 'اختر شهراً',
+    'period_custom'    => 'فترة مخصصة',
+    'period_all'       => 'كل الأوقات',
+    'month'            => 'الشهر',
+    'from'             => 'من',
+    'to'               => 'إلى',
+
+    // Form
+    'add_expense'      => 'إضافة مصروف جديد',
+    'description'      => 'الوصف',
+    'description_ph'   => 'على ماذا أنفقت؟',
+    'amount'           => 'المبلغ (ج.م)',
+    'date'             => 'التاريخ',
+    'category'         => 'الفئة',
+    'place'            => 'المكان / المنشأة',
+    'place_ph'         => 'مثال: ستاربكس، كارفور (اختياري)',
+    'save_expense'     => 'إضافة المصروف',
+
+    // Chart
+    'overview'         => 'نظرة عامة على المصروفات',
+    'chart_pie'        => 'دائري',
+    'chart_bar'        => 'أعمدة',
+    'chart_line'       => 'الاتجاه',
+    'daily_spending'   => 'الإنفاق',
+    'total'            => 'الإجمالي',
+    'no_chart_data'    => 'لا توجد مصروفات في هذه الفترة بعد',
+
+    // History
+    'transactions_history' => 'سجل المعاملات',
+    'search'           => 'بحث',
+    'search_ph'        => 'ابحث في الوصف أو المكان…',
+    'all_categories'   => 'كل الفئات',
+    'apply'            => 'تطبيق',
+    'reset'            => 'إعادة ضبط',
+    'showing'          => 'عرض %d معاملة · %s',
+    'email_report'     => 'إرسال تقرير',
+    'export_excel'     => 'تصدير إلى Excel',
+    'no_expenses'      => 'لا توجد مصروفات في هذه الفترة.',
+    'action'           => 'إجراء',
+    'previous'         => 'السابق',
+    'next'             => 'التالي',
+
+    // Modal / JS
+    'send_report'      => 'إرسال التقرير',
+    'select_period'    => 'اختر فترة التقرير:',
+    'last_3_days'      => 'آخر 3 أيام',
+    'last_7_days'      => 'آخر 7 أيام',
+    'last_30_days'     => 'آخر 30 يوم',
+    'cancel'           => 'إلغاء',
+    'close'            => 'إغلاق',
+    'sending'          => 'جارٍ إرسال التقرير...',
+    'sent'             => 'تم الإرسال بنجاح!',
+    'check_inbox'      => 'تحقق من بريدك الوارد.',
+    'error'            => 'خطأ',
+    'went_wrong'       => 'حدث خطأ ما!',
+    'enter_pin'        => 'أدخل الرمز السري للتصدير:',
+    'wrong_pin'        => 'الرمز السري غير صحيح!',
+    'confirm_delete'   => 'هل أنت متأكد من حذف هذا المصروف؟',
+
+    // Login
+    'welcome_back'     => 'مرحباً بعودتك',
+    'sign_in_to'       => 'سجّل الدخول إلى حساب متتبع المصروفات',
+    'username'         => 'اسم المستخدم',
+    'username_ph'      => 'أدخل اسم المستخدم',
+    'password'         => 'كلمة المرور',
+    'password_ph'      => 'أدخل كلمة المرور',
+    'sign_in'          => 'تسجيل الدخول',
+    'invalid_login'    => 'اسم المستخدم أو كلمة المرور غير صحيحة',
+
+    // Categories
+    'cat_food'          => 'طعام',
+    'cat_cafe'          => 'كافيه',
+    'cat_rent'          => 'إيجار',
+    'cat_transport'     => 'مواصلات',
+    'cat_entertainment' => 'ترفيه',
+    'cat_utilities'     => 'فواتير ومرافق',
+    'cat_shopping'      => 'تسوق',
+    'cat_healthcare'    => 'رعاية صحية',
+    'cat_other'         => 'أخرى',
+
+    'months_short' => ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'],
+];
