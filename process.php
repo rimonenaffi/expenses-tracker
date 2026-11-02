@@ -5,6 +5,47 @@ header('Content-Type: application/json');
 
 $expenses = loadExpenses();
 
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    checkCsrf();
+}
+
+$action = $_POST['action'] ?? 'expense';
+
+// Set the money you currently have
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'balance') {
+    if (!is_numeric($_POST['amount'] ?? '')) {
+        echo json_encode(['success' => false, 'error' => 'Invalid amount']);
+        exit;
+    }
+    saveBalance($_POST['amount']);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Add an income / transfer you received
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'income') {
+    $amount = (float)($_POST['amount'] ?? 0);
+    $date = validDate($_POST['date'] ?? '');
+    $reason = trim($_POST['reason'] ?? '');
+
+    if ($amount <= 0 || !$date || $reason === '') {
+        echo json_encode(['success' => false, 'error' => 'Invalid data']);
+        exit;
+    }
+
+    $income = loadIncome();
+    $income[] = [
+        'id' => bin2hex(random_bytes(6)),
+        'amount' => $amount,
+        'date' => $date,
+        'reason' => $reason,
+        'created_at' => time(),
+    ];
+    saveIncome($income);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // Handle POST request (add new expense)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount = (float)($_POST['amount'] ?? 0);
@@ -24,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'amount' => $amount,
         'date' => $date,
         'category' => $category,
+        'created_at' => time(),
     ];
 
     $expenses[] = $newExpense;
@@ -37,6 +79,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     parse_str(file_get_contents('php://input'), $_DELETE);
     $id = $_DELETE['id'] ?? '';
+
+    if (($_DELETE['type'] ?? '') === 'income') {
+        $income = loadIncome();
+        foreach ($income as $i => $entry) {
+            if ($entry['id'] === $id) {
+                array_splice($income, $i, 1);
+                saveIncome($income);
+                echo json_encode(['success' => true]);
+                exit;
+            }
+        }
+        echo json_encode(['success' => false, 'error' => 'Income not found']);
+        exit;
+    }
 
     foreach ($expenses as $i => $expense) {
         if ($expense['id'] === $id) {

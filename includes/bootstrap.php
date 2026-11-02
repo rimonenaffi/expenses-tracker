@@ -4,10 +4,34 @@ session_start();
 
 define('APP_ROOT', dirname(__DIR__));
 define('EXPENSES_FILE', APP_ROOT . '/data/expenses.json');
+define('INCOME_FILE', APP_ROOT . '/data/income.json');
+define('BALANCE_FILE', APP_ROOT . '/data/balance.json');
+define('SETTINGS_FILE', APP_ROOT . '/data/settings.json');
 
 $config = file_exists(APP_ROOT . '/config.php')
     ? require APP_ROOT . '/config.php'
     : require APP_ROOT . '/config.example.php';
+
+// Defaults for the email / Telegram / schedule settings
+$settingDefaults = [
+    'mail_host' => 'smtp.gmail.com',
+    'mail_port' => 587,
+    'mail_encryption' => 'tls',          // tls (STARTTLS) | ssl | none
+    'mail_username' => $config['mail_address'] ?? '',
+    'mail_app_password' => $config['mail_app_password'] ?? '',
+    'mail_from' => $config['mail_address'] ?? '',
+    'mail_from_name' => 'Expense Tracker',
+    'report_email' => $config['report_email'] ?? ($config['mail_address'] ?? ''),
+    'email_monthly_enabled' => true,
+    'telegram_bot_token' => $config['telegram_bot_token'] ?? '',
+    'telegram_chat_id' => $config['telegram_chat_id'] ?? '',
+    'telegram_daily_enabled' => true,
+    'telegram_monthly_enabled' => true,
+    'report_hour' => 9,
+    'timezone' => $config['timezone'] ?? 'Africa/Cairo',
+];
+// Values saved from the Settings page override config.php
+$config = array_replace($config, $settingDefaults, readJson(SETTINGS_FILE, []));
 
 // The server runs on UTC; dates should follow your local day
 date_default_timezone_set($config['timezone'] ?? 'Africa/Cairo');
@@ -99,11 +123,23 @@ function requireLogin($json = false) {
 }
 
 // --- Storage ---
-function loadExpenses() {
-    if (!file_exists(EXPENSES_FILE)) {
-        return [];
+function readJson($file, $default) {
+    if (!file_exists($file)) {
+        return $default;
     }
-    $expenses = json_decode(file_get_contents(EXPENSES_FILE), true) ?: [];
+    $data = json_decode(file_get_contents($file), true);
+    return $data === null ? $default : $data;
+}
+
+function writeJson($file, $data) {
+    if (!is_dir(dirname($file))) {
+        mkdir(dirname($file), 0755, true);
+    }
+    file_put_contents($file, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT), LOCK_EX);
+}
+
+function loadExpenses() {
+    $expenses = readJson(EXPENSES_FILE, []);
 
     // Older records have no id; give them one so deletes are reliable
     $changed = false;
@@ -121,10 +157,72 @@ function loadExpenses() {
 }
 
 function saveExpenses(array $expenses) {
-    if (!is_dir(dirname(EXPENSES_FILE))) {
-        mkdir(dirname(EXPENSES_FILE), 0755, true);
+    writeJson(EXPENSES_FILE, array_values($expenses));
+}
+
+// Income entries: {id, amount, date, reason, created_at}
+function loadIncome() {
+    return readJson(INCOME_FILE, []);
+}
+
+function saveIncome(array $income) {
+    writeJson(INCOME_FILE, array_values($income));
+}
+
+// The balance you set by hand: {amount, set_at (unix time)}
+function loadBalance() {
+    return readJson(BALANCE_FILE, null);
+}
+
+function saveBalance($amount) {
+    writeJson(BALANCE_FILE, ['amount' => (float)$amount, 'set_at' => time()]);
+}
+
+// Money you have now: the balance you set, plus income and minus expenses
+// that were added after it was set. Null until a balance is set.
+function currentBalance(array $expenses = null, array $income = null) {
+    $balance = loadBalance();
+    if (!$balance) {
+        return null;
     }
-    file_put_contents(EXPENSES_FILE, json_encode(array_values($expenses), JSON_UNESCAPED_UNICODE), LOCK_EX);
+    $total = $balance['amount'];
+    foreach ($income ?? loadIncome() as $entry) {
+        if (($entry['created_at'] ?? 0) > $balance['set_at']) {
+            $total += $entry['amount'];
+        }
+    }
+    foreach ($expenses ?? loadExpenses() as $expense) {
+        if (($expense['created_at'] ?? 0) > $balance['set_at']) {
+            $total -= $expense['amount'];
+        }
+    }
+    return $total;
+}
+
+// Saves only the known setting keys
+function saveSettings(array $changes) {
+    global $settingDefaults;
+    $settings = array_replace(readJson(SETTINGS_FILE, []), array_intersect_key($changes, $settingDefaults));
+    writeJson(SETTINGS_FILE, $settings);
+    @chmod(SETTINGS_FILE, 0600);
+}
+
+// --- CSRF protection for forms that change settings ---
+function csrfToken() {
+    if (empty($_SESSION['csrf'])) {
+        $_SESSION['csrf'] = bin2hex(random_bytes(16));
+    }
+    return $_SESSION['csrf'];
+}
+
+function checkCsrf() {
+    $token = $_POST['csrf'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+    if (!hash_equals(csrfToken(), (string)$token)) {
+        http_response_code(403);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Invalid session, reload the page']);
+        exit;
+    }
 }
 
 // --- Filters (shared by the page, the chart API and the export) ---
@@ -190,7 +288,7 @@ function applyFilters(array $expenses, array $filters) {
         if ($filters['to'] && $expense['date'] > $filters['to']) return false;
         if ($filters['category'] && $expense['category'] !== $filters['category']) return false;
         if ($filters['search'] !== '') {
-            $haystack = ($expense['description'] ?? '') . ' ' . ($expense['place'] ?? '');
+            $haystack = ($expense['description'] ?? '') . ' ' . ($expense['place'] ?? '') . ' ' . ($expense['reason'] ?? '');
             $found = function_exists('mb_stripos')
                 ? mb_stripos($haystack, $filters['search'])
                 : stripos($haystack, $filters['search']);

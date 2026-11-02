@@ -6,9 +6,11 @@ require_once APP_ROOT . '/phpmailer/SMTP.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 
-// Summary of all expenses between $from and $to (inclusive)
-function buildReport(array $expenses, $from, $to) {
-    $items = sortExpenses(array_filter($expenses, fn($e) => $e['date'] >= $from && $e['date'] <= $to));
+// Summary of all expenses (and income) between $from and $to (inclusive)
+function buildReport(array $expenses, $from, $to, array $income = []) {
+    $inRange = fn($e) => $e['date'] >= $from && $e['date'] <= $to;
+    $items = sortExpenses(array_filter($expenses, $inRange));
+    $incomeItems = sortExpenses(array_filter($income, $inRange));
 
     $categories = [];
     $places = [];
@@ -40,6 +42,8 @@ function buildReport(array $expenses, $from, $to) {
         'categories' => $categories,
         'places' => array_slice($places, 0, 5, true),
         'biggest' => $biggest,
+        'incomeItems' => $incomeItems,
+        'incomeTotal' => array_sum(array_column($incomeItems, 'amount')),
     ];
 }
 
@@ -86,7 +90,11 @@ function reportEmailHtml(array $report, $title, array $previous = null, $withTra
             <tr>
                 <td style='padding: 10px; background: #fff; border: 1px solid #eee;'><div style='color:#888; font-size:12px;'>Transactions</div><strong style='font-size:18px; color:#333;'>{$report['count']}</strong></td>
                 <td style='padding: 10px; background: #fff; border: 1px solid #eee;'><div style='color:#888; font-size:12px;'>Daily average</div><strong style='font-size:18px; color:#333;'>" . $money($report['dailyAverage']) . "</strong></td>
-            </tr>
+            </tr>" . ($report['incomeTotal'] > 0 ? "
+            <tr>
+                <td style='padding: 10px; background: #fff; border: 1px solid #eee;'><div style='color:#888; font-size:12px;'>Income</div><strong style='font-size:18px; color:#10b981;'>+" . $money($report['incomeTotal']) . "</strong></td>
+                <td style='padding: 10px; background: #fff; border: 1px solid #eee;'><div style='color:#888; font-size:12px;'>Net (income − spent)</div><strong style='font-size:18px; color:" . ($report['incomeTotal'] >= $report['total'] ? '#10b981' : '#e11d48') . ";'>" . $money($report['incomeTotal'] - $report['total']) . "</strong></td>
+            </tr>" : "") . "
         </table>
 
         <h3 style='border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; color: #444; margin-top: 0;'>Category Breakdown</h3>
@@ -109,6 +117,19 @@ function reportEmailHtml(array $report, $title, array $previous = null, $withTra
         <table style='width: 100%; border-collapse: collapse; margin-bottom: 20px;'>";
         foreach ($report['places'] as $place => $amount) {
             $html .= "<tr><td style='$cell color: #555;'>" . e($place) . "</td><td style='$cell text-align: right; font-weight: bold; color: #333;'>" . $money($amount) . "</td></tr>";
+        }
+        $html .= "</table>";
+    }
+
+    if ($withTransactions && $report['incomeItems']) {
+        $html .= "<h3 style='border-bottom: 2px solid #e0e0e0; padding-bottom: 10px; color: #444;'>Income &amp; Transfers</h3>
+        <table style='width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;'>";
+        foreach ($report['incomeItems'] as $entry) {
+            $html .= "<tr>
+                <td style='padding: 8px 0; border-bottom: 1px solid #eee; color: #888; white-space: nowrap;'>" . e($entry['date']) . "</td>
+                <td style='padding: 8px; border-bottom: 1px solid #eee; color: #444;'>" . e($entry['reason']) . "</td>
+                <td style='padding: 8px 0; border-bottom: 1px solid #eee; text-align: right; font-weight: bold; color: #10b981; white-space: nowrap;'>+" . $money($entry['amount']) . "</td>
+            </tr>";
         }
         $html .= "</table>";
     }
@@ -138,20 +159,36 @@ function reportEmailHtml(array $report, $title, array $previous = null, $withTra
     return $html;
 }
 
-// Sends an HTML email to yourself through Gmail. Returns null on success or the error message.
+// Sends an HTML email using the SMTP settings (Settings page / config.php).
+// Returns null on success or the error message.
 function sendReportEmail(array $config, $subject, $html) {
+    $recipients = array_filter(array_map('trim', explode(',', $config['report_email'] ?? '')));
+    if (!$recipients || ($config['mail_username'] ?? '') === '') {
+        return 'Email is not configured (check the Settings page)';
+    }
+
     $mail = new PHPMailer(true);
     try {
         $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
+        $mail->Host       = $config['mail_host'];
+        $mail->Port       = (int)$config['mail_port'];
         $mail->SMTPAuth   = true;
-        $mail->Username   = $config['mail_address'];
+        $mail->Username   = $config['mail_username'];
         $mail->Password   = $config['mail_app_password'];
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
+        $mail->Timeout    = 20;
+        if ($config['mail_encryption'] === 'ssl') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        } elseif ($config['mail_encryption'] === 'tls') {
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        } else {
+            $mail->SMTPSecure = '';
+            $mail->SMTPAutoTLS = false;
+        }
 
-        $mail->setFrom($config['mail_address'], 'Expense Tracker');
-        $mail->addAddress($config['report_email'] ?? $config['mail_address']);
+        $mail->setFrom($config['mail_from'] ?: $config['mail_username'], $config['mail_from_name'] ?: 'Expense Tracker');
+        foreach ($recipients as $recipient) {
+            $mail->addAddress($recipient);
+        }
 
         $mail->isHTML(true);
         $mail->CharSet = 'UTF-8';
@@ -171,7 +208,7 @@ function tg($text) {
     return htmlspecialchars((string)$text, ENT_NOQUOTES, 'UTF-8');
 }
 
-function telegramDailyText(array $day, array $monthToDate) {
+function telegramDailyText(array $day, array $monthToDate, $balance = null) {
     $money = fn($v) => 'E£ ' . number_format($v, 2);
     $date = date('l, j M Y', strtotime($day['from']));
 
@@ -195,21 +232,41 @@ function telegramDailyText(array $day, array $monthToDate) {
         }
     }
 
+    if ($day['incomeItems']) {
+        $lines[] = "";
+        $lines[] = "💵 <b>Income: +" . $money($day['incomeTotal']) . "</b>";
+        foreach ($day['incomeItems'] as $entry) {
+            $lines[] = "• " . tg($entry['reason']) . " — <b>+" . $money($entry['amount']) . "</b>";
+        }
+    }
+
     $lines[] = "";
     $lines[] = "📅 <b>" . date('F', strtotime($monthToDate['from'])) . " so far:</b> " . $money($monthToDate['total'])
         . " ({$monthToDate['count']} transactions)";
+    if ($monthToDate['incomeTotal'] > 0) {
+        $lines[] = "💵 Income this month: +" . $money($monthToDate['incomeTotal']);
+    }
+    if ($balance !== null) {
+        $lines[] = "👛 <b>Balance now: " . $money($balance) . "</b>";
+    }
 
     return implode("\n", $lines);
 }
 
-function telegramMonthlyText(array $month, array $previous) {
+function telegramMonthlyText(array $month, array $previous, $balance = null, $emailed = true) {
     $money = fn($v) => 'E£ ' . number_format($v, 2);
     $lines = [
         "🗂 <b>Monthly report — " . date('F Y', strtotime($month['from'])) . "</b>",
         "",
-        "💰 Total: <b>" . $money($month['total']) . "</b> ({$month['count']} transactions)",
+        "💰 Total spent: <b>" . $money($month['total']) . "</b> ({$month['count']} transactions)",
         "📈 Daily average: " . $money($month['dailyAverage']),
     ];
+    if ($month['incomeTotal'] > 0) {
+        $lines[] = "💵 Income: +" . $money($month['incomeTotal']) . " · Net: " . $money($month['incomeTotal'] - $month['total']);
+    }
+    if ($balance !== null) {
+        $lines[] = "👛 Balance now: " . $money($balance);
+    }
     $change = percentChange($month['total'], $previous['total']);
     if ($change !== null) {
         $lines[] = ($change > 0 ? "🔺 " : "🔻 ") . abs($change) . "% vs " . date('F', strtotime($previous['from']));
@@ -220,8 +277,10 @@ function telegramMonthlyText(array $month, array $previous) {
             $lines[] = "▫️ " . tg($category) . ": " . $money($amount);
         }
     }
-    $lines[] = "";
-    $lines[] = "📧 Full report sent to your email.";
+    if ($emailed) {
+        $lines[] = "";
+        $lines[] = "📧 Full report sent to your email.";
+    }
     return implode("\n", $lines);
 }
 

@@ -3,8 +3,14 @@ require __DIR__ . '/includes/bootstrap.php';
 requireLogin();
 
 $expenses = loadExpenses();
+$income = loadIncome();
 $filters = getFilters($_GET);
 $finalList = sortExpenses(applyFilters($expenses, $filters));
+
+// Income follows the period and search, but has no category
+$incomeList = sortExpenses(applyFilters($income, array_merge($filters, ['category' => ''])));
+$incomeTotal = array_sum(array_column($incomeList, 'amount'));
+$balance = currentBalance($expenses, $income);
 
 // --- Totals for the selected period ---
 $currentTotalAmount = array_sum(array_column($finalList, 'amount'));
@@ -41,7 +47,7 @@ $periods = ['30days', 'thismonth', 'lastmonth', 'month', 'custom', 'all'];
 // Strings used by script.js
 $jsStrings = [];
 foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'sent', 'check_inbox', 'close',
-          'error', 'went_wrong', 'enter_pin', 'confirm_delete'] as $key) {
+          'error', 'went_wrong', 'enter_pin', 'confirm_delete', 'saved', 'test_sent'] as $key) {
     $jsStrings[$key] = t($key);
 }
 ?>
@@ -55,7 +61,7 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <?php include __DIR__ . '/includes/theme-head.php'; ?>
-    <link rel="stylesheet" href="assets/css/style.css?v=3">
+    <link rel="stylesheet" href="assets/css/style.css?v=4">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -68,6 +74,7 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
                 <div class="topbar-actions">
                     <a class="icon-btn" href="<?= e(urlWith(['lang' => $lang === 'ar' ? 'en' : 'ar'])) ?>"><i class="fas fa-language"></i> <?= e(t('switch_lang')) ?></a>
                     <button type="button" class="icon-btn" id="themeToggle" aria-label="<?= e(t('toggle_theme')) ?>" title="<?= e(t('toggle_theme')) ?>"><i class="fas fa-moon"></i></button>
+                    <a class="icon-btn" href="settings.php" title="<?= e(t('settings')) ?>"><i class="fas fa-gear"></i> <?= e(t('settings')) ?></a>
                     <a class="icon-btn" href="logout.php"><i class="fas fa-sign-out-alt"></i> <?= e(t('logout')) ?></a>
                 </div>
             </div>
@@ -76,6 +83,20 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
         </header>
 
         <div class="dashboard">
+            <div class="summary-card balance reveal" style="--i:1">
+                <h3><?= e(t('balance')) ?></h3>
+                <?php if ($balance === null): ?>
+                    <p class="amount muted-amount"><?= e(t('balance_not_set')) ?></p>
+                <?php else: ?>
+                    <p class="amount <?= $balance < 0 ? 'negative' : 'positive' ?>"><?= e(t('currency')) ?> <span data-count="<?= $balance ?>"><?= number_format($balance, 2) ?></span></p>
+                <?php endif; ?>
+                <p class="info"><?= e(t('income_period', number_format($incomeTotal, 2))) ?></p>
+                <div class="card-actions">
+                    <button type="button" class="mini-btn" onclick="openModal('balanceModal')"><i class="fas fa-wallet"></i> <?= e(t('set_balance')) ?></button>
+                    <button type="button" class="mini-btn income" onclick="openModal('incomeModal')"><i class="fas fa-plus"></i> <?= e(t('add_income')) ?></button>
+                </div>
+            </div>
+
             <a class="summary-card total reveal" style="--i:1; text-decoration:none; cursor:pointer"
                href="<?= e(urlWith(['period' => $filters['period'] === 'all' ? '30days' : 'all', 'showAll' => null, 'page' => null])) ?>#history">
                 <h3><?= e(t('total_expenses')) ?></h3>
@@ -160,7 +181,7 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
             <div class="recent-expenses-header">
                 <h2><i class="fas fa-history"></i> <?= e(t('transactions_history')) ?></h2>
                 <div class="btn-group-header">
-                    <button class="email-btn" onclick="openReportModal()">
+                    <button class="email-btn" onclick="openModal('reportModal')">
                         <i class="fas fa-envelope"></i> <?= e(t('email_report')) ?>
                     </button>
                     <button class="export-btn" onclick="exportWithPIN()">
@@ -264,6 +285,85 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
                 </div>
             <?php endif; ?>
         </div>
+
+        <div class="panel reveal income-panel" style="--i:7" id="income">
+            <div class="recent-expenses-header">
+                <h2><i class="fas fa-hand-holding-dollar"></i> <?= e(t('income_history')) ?></h2>
+                <button class="email-btn" onclick="openModal('incomeModal')"><i class="fas fa-plus"></i> <?= e(t('add_income')) ?></button>
+            </div>
+            <p class="history-summary"><?= e($periodLabel) ?> · <?= e(t('income_period', number_format($incomeTotal, 2))) ?></p>
+            <div class="income-list">
+                <?php if (empty($incomeList)): ?>
+                    <p class="no-expenses"><?= e(t('no_income')) ?></p>
+                <?php else: ?>
+                    <div class="table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th><?= e(t('date')) ?></th>
+                                    <th><?= e(t('reason')) ?></th>
+                                    <th><?= e(t('amount')) ?></th>
+                                    <th><?= e(t('action')) ?></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($incomeList as $i => $entry): ?>
+                                    <tr style="--i:<?= min($i, 20) ?>">
+                                        <td class="date-cell"><?= e(formatDate($entry['date'])) ?></td>
+                                        <td><?= e($entry['reason']) ?></td>
+                                        <td class="amount income-amount">+ <?= e(formatMoney($entry['amount'])) ?></td>
+                                        <td>
+                                            <button class="delete-btn" data-id="<?= e($entry['id']) ?>" data-type="income" aria-label="Delete">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <div id="balanceModal" class="modal-overlay">
+        <div class="modal-content form-modal">
+            <h2><i class="fas fa-wallet"></i> <?= e(t('set_balance')) ?></h2>
+            <p><?= e(t('set_balance_hint')) ?></p>
+            <form class="ajax-form" data-action="balance">
+                <div class="form-group">
+                    <label for="balanceAmount"><?= e(t('amount')) ?></label>
+                    <input type="number" id="balanceAmount" name="amount" step="0.01" required placeholder="0.00" value="<?= $balance !== null ? e(round($balance, 2)) : '' ?>">
+                </div>
+                <button type="submit" class="btn-submit"><i class="fas fa-save"></i> <?= e(t('save')) ?></button>
+            </form>
+            <div class="modal-close" onclick="closeModal('balanceModal')"><?= e(t('cancel')) ?></div>
+        </div>
+    </div>
+
+    <div id="incomeModal" class="modal-overlay">
+        <div class="modal-content form-modal">
+            <h2><i class="fas fa-hand-holding-dollar"></i> <?= e(t('add_income')) ?></h2>
+            <form class="ajax-form" data-action="income">
+                <div class="form-group">
+                    <label for="incomeReason"><?= e(t('reason')) ?></label>
+                    <input type="text" id="incomeReason" name="reason" required maxlength="150" placeholder="<?= e(t('reason_ph')) ?>">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="incomeAmount"><?= e(t('amount')) ?></label>
+                        <input type="number" id="incomeAmount" name="amount" min="0.01" step="0.01" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="incomeDate"><?= e(t('date')) ?></label>
+                        <input type="date" id="incomeDate" name="date" required value="<?= date('Y-m-d') ?>">
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit income-submit"><i class="fas fa-plus"></i> <?= e(t('add_income')) ?></button>
+            </form>
+            <div class="modal-close" onclick="closeModal('incomeModal')"><?= e(t('cancel')) ?></div>
+        </div>
     </div>
 
     <div id="reportModal" class="modal-overlay">
@@ -275,17 +375,18 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
             <button class="modal-btn" onclick="sendReport('last7days')"><?= e(t('last_7_days')) ?></button>
             <button class="modal-btn" onclick="sendReport('last30days')"><?= e(t('last_30_days')) ?></button>
 
-            <div class="modal-close" onclick="closeReportModal()"><?= e(t('cancel')) ?></div>
+            <div class="modal-close" onclick="closeModal('reportModal')"><?= e(t('cancel')) ?></div>
         </div>
     </div>
 
     <script>
         window.APP = {
             lang: <?= json_encode($lang) ?>,
+            csrf: <?= json_encode(csrfToken()) ?>,
             i18n: <?= json_encode($jsStrings, JSON_UNESCAPED_UNICODE) ?>
         };
     </script>
-    <script src="assets/js/theme.js?v=3"></script>
-    <script src="assets/js/script.js?v=3"></script>
+    <script src="assets/js/theme.js?v=4"></script>
+    <script src="assets/js/script.js?v=4"></script>
 </body>
 </html>

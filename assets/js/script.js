@@ -354,6 +354,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         fetch('process.php', {
             method: 'POST',
+            headers: { 'X-CSRF-Token': window.APP.csrf },
             body: new FormData(expenseForm)
         })
         .then(response => response.json())
@@ -370,15 +371,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Handle expense deletion
-    document.querySelector('.expenses-list').addEventListener('click', function(e) {
+    // Balance and income forms (inside the modals)
+    document.querySelectorAll('.ajax-form').forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(form);
+            formData.set('action', form.dataset.action);
+
+            fetch('process.php', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': window.APP.csrf },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(i18n.error + ': ' + (data.error || data.message || i18n.went_wrong));
+                }
+            })
+            .catch(() => alert(i18n.went_wrong));
+        });
+    });
+
+    // Handle expense / income deletion
+    document.addEventListener('click', function(e) {
         const button = e.target.closest('.delete-btn');
         if (!button || !confirm(i18n.confirm_delete)) return;
 
         fetch('process.php', {
             method: 'DELETE',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: 'id=' + encodeURIComponent(button.dataset.id)
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': window.APP.csrf },
+            body: 'id=' + encodeURIComponent(button.dataset.id) + '&type=' + encodeURIComponent(button.dataset.type || 'expense')
         })
         .then(response => response.json())
         .then(data => {
@@ -418,24 +443,33 @@ function exportWithPIN() {
     form.remove();
 }
 
-// --- Email Report Functions ---
-function openReportModal() {
-    document.getElementById('reportModal').style.display = 'flex';
+// --- Modals ---
+function openModal(id) {
+    const modal = document.getElementById(id);
+    modal.style.display = 'flex';
+    const firstInput = modal.querySelector('input');
+    if (firstInput) firstInput.focus();
 }
 
-function closeReportModal() {
-    document.getElementById('reportModal').style.display = 'none';
+function closeModal(id) {
+    document.getElementById(id).style.display = 'none';
 }
 
 window.addEventListener('click', function(event) {
-    if (event.target === document.getElementById('reportModal')) {
-        closeReportModal();
+    if (event.target.classList.contains('modal-overlay')) {
+        event.target.style.display = 'none';
+    }
+});
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        document.querySelectorAll('.modal-overlay').forEach(modal => { modal.style.display = 'none'; });
     }
 });
 
 function sendReport(period) {
     const i18n = window.APP.i18n;
-    const modalContent = document.querySelector('.modal-content');
+    const modalContent = document.querySelector('#reportModal .modal-content');
     const originalContent = modalContent.innerHTML;
 
     modalContent.innerHTML = `
@@ -447,7 +481,7 @@ function sendReport(period) {
 
     fetch('send_report.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': window.APP.csrf },
         body: JSON.stringify({ period: period })
     })
     .then(response => response.json())
@@ -458,7 +492,7 @@ function sendReport(period) {
                     <i class="fas fa-check-circle fa-4x" style="margin-bottom:15px"></i>
                     <h3 style="margin:0;">${i18n.sent}</h3>
                     <p style="margin-top:5px;">${i18n.check_inbox}</p>
-                    <button class="modal-btn" onclick="closeReportModal()" style="margin-top:20px">${i18n.close}</button>
+                    <button class="modal-btn" onclick="closeModal('reportModal')" style="margin-top:20px">${i18n.close}</button>
                 </div>
             `;
             setTimeout(() => { modalContent.innerHTML = originalContent; }, 4000);

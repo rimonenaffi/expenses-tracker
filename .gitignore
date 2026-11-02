@@ -7,3 +7,6 @@ data/expenses.json
 .DS_Store
 Thumbs.db
 data/cron_state.json
+data/income.json
+data/balance.json
+data/settings.json
