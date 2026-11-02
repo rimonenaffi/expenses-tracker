@@ -29,6 +29,7 @@ $settingDefaults = [
     'telegram_monthly_enabled' => true,
     'report_hour' => 9,
     'timezone' => $config['timezone'] ?? 'Africa/Cairo',
+    'users' => $config['users'] ?? [],   // username => password hash
 ];
 // Values saved from the Settings page override config.php
 $config = array_replace($config, $settingDefaults, readJson(SETTINGS_FILE, []));

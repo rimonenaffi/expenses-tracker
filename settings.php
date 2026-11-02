@@ -39,6 +39,44 @@ function settingsFromPost(array $post) {
     return $settings;
 }
 
+// Changes the signed-in user's username and/or password after checking the current password
+function changeAccount(array $config, array $post) {
+    $current = $_SESSION['username'] ?? '';
+    $users = $config['users'];
+    if (!isset($users[$current]) || !password_verify($post['current_password'] ?? '', $users[$current])) {
+        sleep(1);
+        return ['success' => false, 'message' => t('wrong_current_password')];
+    }
+
+    $newName = trim($post['new_username'] ?? '');
+    if (!preg_match('/^[A-Za-z0-9._@-]{3,32}$/', $newName)) {
+        return ['success' => false, 'message' => t('username_invalid')];
+    }
+    if ($newName !== $current && isset($users[$newName])) {
+        return ['success' => false, 'message' => t('username_taken')];
+    }
+
+    $hash = $users[$current];
+    $newPassword = $post['new_password'] ?? '';
+    if ($newPassword !== '') {
+        if (strlen($newPassword) < 8) {
+            return ['success' => false, 'message' => t('password_too_short')];
+        }
+        if ($newPassword !== ($post['confirm_password'] ?? '')) {
+            return ['success' => false, 'message' => t('password_mismatch')];
+        }
+        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+    }
+
+    unset($users[$current]);
+    $users[$newName] = $hash;
+    saveSettings(['users' => $users]);
+
+    session_regenerate_id(true);
+    $_SESSION['username'] = $newName;
+    return ['success' => true, 'message' => t('account_saved'), 'username' => $newName];
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Content-Type: application/json');
     checkCsrf();
@@ -51,6 +89,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'save':
             saveSettings($changes);
             echo json_encode(['success' => true, 'message' => t('saved')]);
+            break;
+
+        case 'account':
+            echo json_encode(changeAccount($config, $_POST));
             break;
 
         case 'test_email':
@@ -238,6 +280,34 @@ $checked = fn($key) => !empty($config[$key]) ? 'checked' : '';
                     <button type="submit" class="btn-submit"><i class="fas fa-save"></i> <?= e(t('save_settings')) ?></button>
                 </div>
             </form>
+
+            <form class="panel reveal settings-form wide" style="--i:4" data-section="account" data-action="account">
+                <h2><i class="fas fa-user-lock"></i> <?= e(t('account_settings')) ?></h2>
+                <p class="panel-intro"><?= e(t('account_hint')) ?></p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new_username"><?= e(t('username')) ?></label>
+                        <input type="text" id="new_username" name="new_username" value="<?= e($_SESSION['username']) ?>" required autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="current_password"><?= e(t('current_password')) ?></label>
+                        <input type="password" id="current_password" name="current_password" required autocomplete="current-password">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="new_password"><?= e(t('new_password')) ?></label>
+                        <input type="password" id="new_password" name="new_password" minlength="8" autocomplete="new-password" placeholder="<?= e(t('new_password_ph')) ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password"><?= e(t('confirm_password')) ?></label>
+                        <input type="password" id="confirm_password" name="confirm_password" autocomplete="new-password">
+                    </div>
+                </div>
+                <div class="settings-actions">
+                    <button type="submit" class="btn-submit"><i class="fas fa-save"></i> <?= e(t('save_account')) ?></button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -275,8 +345,14 @@ $checked = fn($key) => !empty($config[$key]) ? 'checked' : '';
         document.querySelectorAll('.settings-form').forEach(form => {
             form.addEventListener('submit', e => {
                 e.preventDefault();
-                withSpinner(form.querySelector('[type=submit]'), post(form, 'save').then(res => {
+                withSpinner(form.querySelector('[type=submit]'), post(form, form.dataset.action || 'save').then(res => {
                     toast(res.message, !res.success);
+                    // The account form clears its password boxes instead of showing "saved" placeholders
+                    if (form.dataset.action) {
+                        form.querySelectorAll('input[type=password]').forEach(input => { input.value = ''; });
+                        if (res.username) form.new_username.value = res.username;
+                        return;
+                    }
                     // Secrets are never shown again; clear them after saving
                     form.querySelectorAll('input[type=password]').forEach(input => {
                         if (input.value) { input.value = ''; input.placeholder = <?= json_encode(t('secret_keep')) ?>; }

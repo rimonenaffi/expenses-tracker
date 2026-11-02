@@ -161,4 +161,19 @@ return [
     'install_mac_safari' => '<li>In Safari, open the <b>File</b> menu.</li><li>Choose <b>Add to Dock</b>, then <b>Add</b>.</li>',
     'install_firefox'    => '<li>Firefox on desktop can\'t install web apps.</li><li>Open this page in <b>Chrome</b> or <b>Edge</b> and press <b>Install app</b>.</li>',
     'install_desktop'    => '<li>Click the install icon <i class="fas fa-download"></i> at the right of the address bar.</li><li>Or open the browser menu and choose <b>Install Expense Tracker</b> (in Edge: <b>Apps → Install this site as an app</b>).</li><li>If you don\'t see it, the app is already installed — open it from your Start menu or apps list.</li>',
+
+    // Account
+    'account_settings'       => 'Account',
+    'account_hint'           => 'Change the username and password you sign in with. Your current password is needed to save.',
+    'current_password'       => 'Current password',
+    'new_password'           => 'New password',
+    'new_password_ph'        => 'Leave empty to keep it',
+    'confirm_password'       => 'Confirm new password',
+    'save_account'           => 'Update account',
+    'account_saved'          => 'Account updated. Use the new details next time you sign in.',
+    'wrong_current_password' => 'Current password is incorrect',
+    'username_invalid'       => 'Username must be 3–32 letters, numbers or . _ - @',
+    'username_taken'         => 'That username is already used',
+    'password_too_short'     => 'New password must be at least 8 characters',
+    'password_mismatch'      => 'The new passwords don\'t match',
 ];
