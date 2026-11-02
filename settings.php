@@ -109,7 +109,8 @@ $checked = fn($key) => !empty($config[$key]) ? 'checked' : '';
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <?php include __DIR__ . '/includes/theme-head.php'; ?>
-    <link rel="stylesheet" href="assets/css/style.css?v=4">
+    <?php include __DIR__ . '/includes/pwa-head.php'; ?>
+    <link rel="stylesheet" href="assets/css/style.css?v=6">
 </head>
 <body>
     <div class="container">
@@ -304,5 +305,6 @@ $checked = fn($key) => !empty($config[$key]) ? 'checked' : '';
         });
     </script>
     <script src="assets/js/theme.js?v=4"></script>
+    <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

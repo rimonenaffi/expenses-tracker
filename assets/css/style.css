@@ -93,11 +93,15 @@ header {
 .topbar-actions {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    max-width: 100%;
     gap: 8px;
 }
 
 .icon-btn {
     height: 40px;
+    white-space: nowrap;
     min-width: 40px;
     padding: 0 12px;
     border-radius: 20px;
@@ -853,4 +857,33 @@ td.amount {
         animation-delay: 0ms !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+/* Install as an app */
+[hidden] {
+    display: none !important;
+}
+
+.install-btn {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.install-help .install-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 14px;
+    margin-bottom: 10px;
+}
+
+.install-help ol {
+    text-align: start;
+    margin: 0 0 16px;
+    padding-inline-start: 22px;
+    line-height: 1.8;
+}
+
+.install-help ol i {
+    color: var(--primary-color);
+    margin: 0 2px;
 }

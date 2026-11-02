@@ -61,7 +61,8 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <?php include __DIR__ . '/includes/theme-head.php'; ?>
-    <link rel="stylesheet" href="assets/css/style.css?v=4">
+    <?php include __DIR__ . '/includes/pwa-head.php'; ?>
+    <link rel="stylesheet" href="assets/css/style.css?v=6">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -74,6 +75,7 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
                 <div class="topbar-actions">
                     <a class="icon-btn" href="<?= e(urlWith(['lang' => $lang === 'ar' ? 'en' : 'ar'])) ?>"><i class="fas fa-language"></i> <?= e(t('switch_lang')) ?></a>
                     <button type="button" class="icon-btn" id="themeToggle" aria-label="<?= e(t('toggle_theme')) ?>" title="<?= e(t('toggle_theme')) ?>"><i class="fas fa-moon"></i></button>
+                    <button type="button" class="icon-btn install-btn" id="installApp" hidden><i class="fas fa-download"></i> <?= e(t('install_app')) ?></button>
                     <a class="icon-btn" href="settings.php" title="<?= e(t('settings')) ?>"><i class="fas fa-gear"></i> <?= e(t('settings')) ?></a>
                     <a class="icon-btn" href="logout.php"><i class="fas fa-sign-out-alt"></i> <?= e(t('logout')) ?></a>
                 </div>
@@ -379,6 +381,20 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
         </div>
     </div>
 
+    <div id="installModal" class="modal-overlay">
+        <div class="modal-content install-help">
+            <img src="assets/icons/icon-192.png" alt="" class="install-icon">
+            <h2><?= e(t('install_title')) ?></h2>
+            <p><?= e(t('install_intro')) ?></p>
+            <ol data-platform="ios" hidden><?= t('install_ios') ?></ol>
+            <ol data-platform="android" hidden><?= t('install_android') ?></ol>
+            <ol data-platform="mac_safari" hidden><?= t('install_mac_safari') ?></ol>
+            <ol data-platform="firefox" hidden><?= t('install_firefox') ?></ol>
+            <ol data-platform="desktop" hidden><?= t('install_desktop') ?></ol>
+            <button class="modal-btn" onclick="closeModal('installModal')"><?= e(t('close')) ?></button>
+        </div>
+    </div>
+
     <script>
         window.APP = {
             lang: <?= json_encode($lang) ?>,
@@ -388,5 +404,6 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
     </script>
     <script src="assets/js/theme.js?v=4"></script>
     <script src="assets/js/script.js?v=4"></script>
+    <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

@@ -35,6 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <?php include __DIR__ . '/includes/theme-head.php'; ?>
+    <?php include __DIR__ . '/includes/pwa-head.php'; ?>
     <style>
         :root {
             --primary: #4361ee;
@@ -80,6 +81,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 1rem;
             transition: background-color 0.5s ease, color 0.5s ease;
         }
+
+        [hidden] { display: none !important; }
 
         .top-actions {
             position: fixed;
@@ -288,6 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
     <div class="top-actions">
         <a class="icon-btn" href="?lang=<?= $lang === 'ar' ? 'en' : 'ar' ?>"><i class="fas fa-language"></i> <?= e(t('switch_lang')) ?></a>
+        <button type="button" class="icon-btn" id="installApp" hidden><i class="fas fa-download"></i> <?= e(t('install_app')) ?></button>
         <button type="button" class="icon-btn" id="themeToggle" aria-label="<?= e(t('toggle_theme')) ?>"><i class="fas fa-moon"></i></button>
     </div>
 
@@ -332,5 +336,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 
     <script src="assets/js/theme.js"></script>
+    <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

@@ -151,4 +151,14 @@ return [
     'cat_other'         => 'Other',
 
     'months_short' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+
+    // Install as an app
+    'install_app'        => 'Install app',
+    'install_title'      => 'Install Expense Tracker',
+    'install_intro'      => 'Add it to your home screen or desktop to open it like a normal app.',
+    'install_ios'        => '<li>Open this page in <b>Safari</b>.</li><li>Tap the <b>Share</b> button <i class="fas fa-arrow-up-from-bracket"></i>.</li><li>Choose <b>Add to Home Screen</b>, then <b>Add</b>.</li>',
+    'install_android'    => '<li>Open the browser menu <i class="fas fa-ellipsis-vertical"></i>.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Confirm with <b>Install</b>.</li>',
+    'install_mac_safari' => '<li>In Safari, open the <b>File</b> menu.</li><li>Choose <b>Add to Dock</b>, then <b>Add</b>.</li>',
+    'install_firefox'    => '<li>Firefox on desktop can\'t install web apps.</li><li>Open this page in <b>Chrome</b> or <b>Edge</b> and press <b>Install app</b>.</li>',
+    'install_desktop'    => '<li>Click the install icon <i class="fas fa-download"></i> at the right of the address bar.</li><li>Or open the browser menu and choose <b>Install Expense Tracker</b> (in Edge: <b>Apps → Install this site as an app</b>).</li><li>If you don\'t see it, the app is already installed — open it from your Start menu or apps list.</li>',
 ];
