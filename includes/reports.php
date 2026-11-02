@@ -246,6 +246,22 @@ function sendTelegram(array $config, $text, $chatId = null) {
 }
 
 function telegramApi($token, $method, array $params = []) {
+    $url = "https://api.telegram.org/bot$token/$method";
+
+    // Hostinger disables allow_url_fopen, so prefer cURL
+    if (function_exists('curl_init')) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => http_build_query($params),
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 20,
+        ]);
+        $body = curl_exec($ch);
+        curl_close($ch);
+        return $body === false ? null : json_decode($body, true);
+    }
+
     $context = stream_context_create(['http' => [
         'method' => 'POST',
         'header' => 'Content-Type: application/x-www-form-urlencoded',
@@ -253,6 +269,6 @@ function telegramApi($token, $method, array $params = []) {
         'timeout' => 20,
         'ignore_errors' => true,
     ]]);
-    $body = @file_get_contents("https://api.telegram.org/bot$token/$method", false, $context);
+    $body = @file_get_contents($url, false, $context);
     return $body === false ? null : json_decode($body, true);
 }
