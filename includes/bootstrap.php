@@ -7,6 +7,7 @@ define('EXPENSES_FILE', APP_ROOT . '/data/expenses.json');
 define('INCOME_FILE', APP_ROOT . '/data/income.json');
 define('BALANCE_FILE', APP_ROOT . '/data/balance.json');
 define('SETTINGS_FILE', APP_ROOT . '/data/settings.json');
+define('SUBSCRIPTIONS_FILE', APP_ROOT . '/data/subscriptions.json');
 
 $config = file_exists(APP_ROOT . '/config.php')
     ? require APP_ROOT . '/config.php'
@@ -168,6 +169,89 @@ function loadIncome() {
 
 function saveIncome(array $income) {
     writeJson(INCOME_FILE, array_values($income));
+}
+
+// Monthly subscriptions: {id, name, amount, category, place, day (1-31), start (Y-m-d),
+// active, last_charged (Y-m of the last month an expense was added), created_at}
+function loadSubscriptions() {
+    return readJson(SUBSCRIPTIONS_FILE, []);
+}
+
+function saveSubscriptions(array $subscriptions) {
+    writeJson(SUBSCRIPTIONS_FILE, array_values($subscriptions));
+}
+
+// The payment date in a month; day 31 falls on the last day of shorter months
+function subscriptionDate(array $subscription, $month) {
+    $day = min((int)$subscription['day'], (int)date('t', strtotime("$month-01")));
+    return sprintf('%s-%02d', $month, $day);
+}
+
+// The next payment that hasn't been added as an expense yet
+function nextSubscriptionDate(array $subscription) {
+    $month = $subscription['last_charged']
+        ? date('Y-m', strtotime($subscription['last_charged'] . '-01 +1 month'))
+        : substr($subscription['start'], 0, 7);
+    $date = subscriptionDate($subscription, $month);
+    if ($date < $subscription['start']) {
+        $date = subscriptionDate($subscription, date('Y-m', strtotime("$month-01 +1 month")));
+    }
+    return $date;
+}
+
+// Adds an expense for every active subscription payment that is due (today or missed).
+// Runs on each dashboard visit and from cron, so it is safe to call repeatedly.
+function chargeDueSubscriptions() {
+    $subscriptions = loadSubscriptions();
+    if (!$subscriptions) {
+        return 0;
+    }
+    $today = date('Y-m-d');
+    $expenses = null;
+    $added = 0;
+
+    foreach ($subscriptions as &$subscription) {
+        if (empty($subscription['active'])) {
+            continue;
+        }
+        while (($date = nextSubscriptionDate($subscription)) <= $today) {
+            $expenses ??= loadExpenses();
+            $expenses[] = [
+                'id' => bin2hex(random_bytes(6)),
+                'description' => $subscription['name'],
+                'place' => $subscription['place'] ?? '',
+                'amount' => (float)$subscription['amount'],
+                'date' => $date,
+                'category' => $subscription['category'],
+                'created_at' => time(),
+                'subscription_id' => $subscription['id'],
+            ];
+            $subscription['last_charged'] = substr($date, 0, 7);
+            $added++;
+        }
+    }
+    unset($subscription);
+
+    if ($added) {
+        saveExpenses($expenses);
+        saveSubscriptions($subscriptions);
+    }
+    return $added;
+}
+
+// Active subscriptions due between two dates (inclusive), sorted by date
+function upcomingSubscriptions($from, $to) {
+    $upcoming = [];
+    foreach (loadSubscriptions() as $subscription) {
+        if (!empty($subscription['active'])) {
+            $date = nextSubscriptionDate($subscription);
+            if ($date >= $from && $date <= $to) {
+                $upcoming[] = $subscription + ['next' => $date];
+            }
+        }
+    }
+    usort($upcoming, fn($a, $b) => strcmp($a['next'], $b['next']));
+    return $upcoming;
 }
 
 // The balance you set by hand: {amount, set_at (unix time)}

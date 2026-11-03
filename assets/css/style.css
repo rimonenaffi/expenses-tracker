@@ -887,3 +887,54 @@ td.amount {
     color: var(--primary-color);
     margin: 0 2px;
 }
+
+/* Monthly subscriptions */
+.subscriptions-panel {
+    margin-top: 30px;
+}
+
+.sub-mark {
+    color: var(--primary-color);
+    font-size: 0.8em;
+    margin-inline-end: 6px;
+}
+
+.sub-day,
+.subscriptions-panel .place {
+    color: var(--muted);
+    font-size: 0.8rem;
+    margin-top: 2px;
+}
+
+.sub-paused td {
+    opacity: 0.55;
+}
+
+.sub-paused .sub-actions {
+    opacity: 1;
+}
+
+.sub-status {
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.sub-actions {
+    white-space: nowrap;
+}
+
+.icon-action {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: var(--transition);
+}
+
+.icon-action:hover {
+    color: var(--primary-color);
+    background: var(--surface-hover);
+}

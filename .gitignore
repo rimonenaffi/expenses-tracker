@@ -10,3 +10,4 @@ data/cron_state.json
 data/income.json
 data/balance.json
 data/settings.json
+data/subscriptions.json

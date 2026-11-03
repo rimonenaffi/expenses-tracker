@@ -46,6 +46,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'income') {
     exit;
 }
 
+// Add or edit a monthly subscription
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'subscription') {
+    $name = trim($_POST['name'] ?? '');
+    $amount = (float)($_POST['amount'] ?? 0);
+    $category = $_POST['category'] ?? '';
+    $day = (int)($_POST['day'] ?? 0);
+    $start = validDate($_POST['start'] ?? '');
+    $id = $_POST['id'] ?? '';
+
+    if ($name === '' || $amount <= 0 || !in_array($category, $categories, true) || $day < 1 || $day > 31 || (!$id && !$start)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid data']);
+        exit;
+    }
+
+    $subscriptions = loadSubscriptions();
+    $fields = ['name' => $name, 'amount' => $amount, 'category' => $category, 'place' => trim($_POST['place'] ?? ''), 'day' => $day];
+
+    if ($id) {
+        $found = false;
+        foreach ($subscriptions as &$subscription) {
+            if ($subscription['id'] === $id) {
+                $subscription = array_replace($subscription, $fields);
+                $found = true;
+            }
+        }
+        unset($subscription);
+        if (!$found) {
+            echo json_encode(['success' => false, 'error' => 'Subscription not found']);
+            exit;
+        }
+    } else {
+        $subscriptions[] = $fields + [
+            'id' => bin2hex(random_bytes(6)),
+            'start' => $start,
+            'active' => true,
+            'last_charged' => null,
+            'created_at' => time(),
+        ];
+    }
+    saveSubscriptions($subscriptions);
+    chargeDueSubscriptions();
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// Pause or resume a subscription. Resuming skips the months it was paused.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'subscription_toggle') {
+    $subscriptions = loadSubscriptions();
+    foreach ($subscriptions as &$subscription) {
+        if ($subscription['id'] === ($_POST['id'] ?? '')) {
+            $subscription['active'] = empty($subscription['active']);
+            if ($subscription['active']) {
+                $today = date('Y-m-d');
+                $month = date('Y-m');
+                // Start again from the next payment that hasn't passed yet
+                $subscription['last_charged'] = date('Y-m', strtotime("$month-01 -1 month"));
+                if (subscriptionDate($subscription, $month) < $today) {
+                    $subscription['last_charged'] = $month;
+                }
+                if ($subscription['start'] > $today) {
+                    $subscription['last_charged'] = null;
+                }
+            }
+        }
+    }
+    unset($subscription);
+    saveSubscriptions($subscriptions);
+    chargeDueSubscriptions();
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 // Handle POST request (add new expense)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $amount = (float)($_POST['amount'] ?? 0);
@@ -79,6 +151,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
     parse_str(file_get_contents('php://input'), $_DELETE);
     $id = $_DELETE['id'] ?? '';
+
+    // Deleting a subscription stops future payments; past ones stay in the history
+    if (($_DELETE['type'] ?? '') === 'subscription') {
+        $subscriptions = loadSubscriptions();
+        $remaining = array_filter($subscriptions, fn($s) => $s['id'] !== $id);
+        if (count($remaining) === count($subscriptions)) {
+            echo json_encode(['success' => false, 'error' => 'Subscription not found']);
+            exit;
+        }
+        saveSubscriptions($remaining);
+        echo json_encode(['success' => true]);
+        exit;
+    }
 
     if (($_DELETE['type'] ?? '') === 'income') {
         $income = loadIncome();

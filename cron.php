@@ -62,6 +62,9 @@ function deliver($label, $dryRun, callable $send, $preview) {
 $today = validDate($options['date'] ?? '') ?: date('Y-m-d');
 $stateFile = APP_ROOT . '/data/cron_state.json';
 $state = readJson($stateFile, []);
+if (!$dryRun && ($charged = chargeDueSubscriptions())) {
+    logLine("Added $charged subscription payment(s)");
+}
 $expenses = loadExpenses();
 $income = loadIncome();
 $balance = currentBalance($expenses, $income);
@@ -71,7 +74,7 @@ if (!empty($config['telegram_daily_enabled']) && ($force || ($state['daily'] ?? 
     $yesterday = date('Y-m-d', strtotime("$today -1 day"));
     $day = buildReport($expenses, $yesterday, $yesterday, $income);
     $monthToDate = buildReport($expenses, date('Y-m-01', strtotime($yesterday)), $yesterday, $income);
-    $text = telegramDailyText($day, $monthToDate, $balance);
+    $text = telegramDailyText($day, $monthToDate, $balance, upcomingSubscriptions($today, date('Y-m-d', strtotime("$today +3 days"))));
 
     if (deliver('Daily Telegram report', $dryRun, fn() => sendTelegram($config, $text), strip_tags($text)) && !$dryRun) {
         $state['daily'] = $today;

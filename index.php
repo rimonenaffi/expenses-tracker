@@ -2,6 +2,7 @@
 require __DIR__ . '/includes/bootstrap.php';
 requireLogin();
 
+chargeDueSubscriptions();
 $expenses = loadExpenses();
 $income = loadIncome();
 $filters = getFilters($_GET);
@@ -23,6 +24,16 @@ foreach ($finalList as $expense) {
 }
 arsort($categoryTotals);
 $topCategory = $categoryTotals ? array_key_first($categoryTotals) : null;
+
+// Monthly subscriptions, next payment first; paused ones at the end
+$subscriptions = loadSubscriptions();
+foreach ($subscriptions as &$subscription) {
+    $subscription['next'] = nextSubscriptionDate($subscription);
+}
+unset($subscription);
+usort($subscriptions, fn($a, $b) => [empty($a['active']), $a['next']] <=> [empty($b['active']), $b['next']]);
+$activeSubscriptions = array_filter($subscriptions, fn($s) => !empty($s['active']));
+$subscriptionsMonthly = array_sum(array_column($activeSubscriptions, 'amount'));
 
 // Places used before, for the autocomplete list
 $knownPlaces = array_values(array_unique(array_filter(array_map('trim', array_column($expenses, 'place')))));
@@ -47,7 +58,8 @@ $periods = ['30days', 'thismonth', 'lastmonth', 'month', 'custom', 'all'];
 // Strings used by script.js
 $jsStrings = [];
 foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'sent', 'check_inbox', 'close',
-          'error', 'went_wrong', 'enter_pin', 'confirm_delete', 'saved', 'test_sent'] as $key) {
+          'error', 'went_wrong', 'enter_pin', 'confirm_delete', 'saved', 'test_sent',
+          'add_subscription', 'edit_subscription', 'confirm_delete_subscription'] as $key) {
     $jsStrings[$key] = t($key);
 }
 ?>
@@ -62,7 +74,7 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <?php include __DIR__ . '/includes/theme-head.php'; ?>
     <?php include __DIR__ . '/includes/pwa-head.php'; ?>
-    <link rel="stylesheet" href="assets/css/style.css?v=6">
+    <link rel="stylesheet" href="assets/css/style.css?v=7">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -254,7 +266,7 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
                                 <?php foreach ($expensesForPage as $i => $expense): ?>
                                     <tr style="--i:<?= min($i, 20) ?>">
                                         <td class="date-cell"><?= e(formatDate($expense['date'])) ?></td>
-                                        <td><?= e($expense['description']) ?></td>
+                                        <td><?php if (!empty($expense['subscription_id'])): ?><i class="fas fa-rotate sub-mark" title="<?= e(t('subscription_payment')) ?>"></i><?php endif; ?><?= e($expense['description']) ?></td>
                                         <td class="place"><?php if (!empty($expense['place'])): ?><i class="fas fa-location-dot"></i><?= e($expense['place']) ?><?php else: ?>—<?php endif; ?></td>
                                         <td><span class="category-tag" style="background-color: <?= getCategoryColor($expense['category']) ?>"><?= e(categoryLabel($expense['category'])) ?></span></td>
                                         <td class="amount"><?= e(formatMoney($expense['amount'])) ?></td>
@@ -326,6 +338,100 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
                     </div>
                 <?php endif; ?>
             </div>
+        </div>
+
+        <div class="panel reveal subscriptions-panel" style="--i:8" id="subscriptions">
+            <div class="recent-expenses-header">
+                <h2><i class="fas fa-rotate"></i> <?= e(t('subscriptions')) ?></h2>
+                <button class="email-btn" onclick="openSubscriptionModal()"><i class="fas fa-plus"></i> <?= e(t('add_subscription')) ?></button>
+            </div>
+            <p class="history-summary"><?= e(t('subscriptions_summary', number_format($subscriptionsMonthly, 2), count($activeSubscriptions))) ?></p>
+            <?php if (empty($subscriptions)): ?>
+                <p class="no-expenses"><?= e(t('no_subscriptions')) ?></p>
+            <?php else: ?>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><?= e(t('subscription_name')) ?></th>
+                                <th><?= e(t('category')) ?></th>
+                                <th><?= e(t('amount')) ?></th>
+                                <th><?= e(t('next_payment')) ?></th>
+                                <th><?= e(t('action')) ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($subscriptions as $i => $subscription): ?>
+                                <tr style="--i:<?= min($i, 20) ?>" class="<?= empty($subscription['active']) ? 'sub-paused' : '' ?>">
+                                    <td>
+                                        <?= e($subscription['name']) ?>
+                                        <?php if (!empty($subscription['place'])): ?><div class="place"><i class="fas fa-location-dot"></i><?= e($subscription['place']) ?></div><?php endif; ?>
+                                    </td>
+                                    <td><span class="category-tag" style="background-color: <?= getCategoryColor($subscription['category']) ?>"><?= e(categoryLabel($subscription['category'])) ?></span></td>
+                                    <td class="amount"><?= e(formatMoney($subscription['amount'])) ?></td>
+                                    <td class="date-cell">
+                                        <?php if (!empty($subscription['active'])): ?>
+                                            <?= e(formatDate($subscription['next'])) ?>
+                                            <div class="sub-day"><?= e(t('every_month_on', (int)$subscription['day'])) ?></div>
+                                        <?php else: ?>
+                                            <span class="sub-status"><i class="fas fa-pause"></i> <?= e(t('paused')) ?></span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="sub-actions">
+                                        <button class="icon-action" data-sub-edit='<?= e(json_encode(array_intersect_key($subscription, array_flip(['id', 'name', 'amount', 'category', 'place', 'day'])))) ?>' title="<?= e(t('edit')) ?>" aria-label="<?= e(t('edit')) ?>"><i class="fas fa-pen"></i></button>
+                                        <button class="icon-action" data-sub-toggle="<?= e($subscription['id']) ?>" title="<?= e(t(empty($subscription['active']) ? 'resume' : 'pause')) ?>" aria-label="<?= e(t(empty($subscription['active']) ? 'resume' : 'pause')) ?>"><i class="fas fa-<?= empty($subscription['active']) ? 'play' : 'pause' ?>"></i></button>
+                                        <button class="delete-btn" data-id="<?= e($subscription['id']) ?>" data-type="subscription" aria-label="Delete"><i class="fas fa-trash-alt"></i></button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div id="subscriptionModal" class="modal-overlay">
+        <div class="modal-content form-modal">
+            <h2><i class="fas fa-rotate"></i> <span id="subscriptionModalTitle"><?= e(t('add_subscription')) ?></span></h2>
+            <form class="ajax-form" data-action="subscription" id="subscriptionForm">
+                <input type="hidden" name="id" value="">
+                <div class="form-group">
+                    <label for="subName"><?= e(t('subscription_name')) ?></label>
+                    <input type="text" id="subName" name="name" required maxlength="100" placeholder="<?= e(t('subscription_name_ph')) ?>">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="subAmount"><?= e(t('amount_per_month')) ?></label>
+                        <input type="number" id="subAmount" name="amount" min="0.01" step="0.01" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label for="subCategory"><?= e(t('category')) ?></label>
+                        <select id="subCategory" name="category" required>
+                            <?php foreach ($categories as $category): ?>
+                                <option value="<?= e($category) ?>" <?= $category === 'Entertainment' ? 'selected' : '' ?>><?= e(categoryLabel($category)) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="subPlace"><?= e(t('place')) ?></label>
+                    <input type="text" id="subPlace" name="place" maxlength="100" list="placesList" placeholder="<?= e(t('place_ph')) ?>">
+                </div>
+                <div class="form-row">
+                    <div class="form-group" id="subStartGroup">
+                        <label for="subStart"><?= e(t('first_payment')) ?></label>
+                        <input type="date" id="subStart" name="start" value="<?= date('Y-m-d') ?>">
+                    </div>
+                    <div class="form-group">
+                        <label for="subDay"><?= e(t('billing_day')) ?></label>
+                        <input type="number" id="subDay" name="day" min="1" max="31" required value="<?= (int)date('j') ?>">
+                    </div>
+                </div>
+                <p class="hint"><?= e(t('subscription_hint')) ?></p>
+                <button type="submit" class="btn-submit"><i class="fas fa-save"></i> <?= e(t('save')) ?></button>
+            </form>
+            <div class="modal-close" onclick="closeModal('subscriptionModal')"><?= e(t('cancel')) ?></div>
         </div>
     </div>
 
@@ -403,7 +509,7 @@ foreach (['currency', 'daily_spending', 'total', 'no_chart_data', 'sending', 'se
         };
     </script>
     <script src="assets/js/theme.js?v=4"></script>
-    <script src="assets/js/script.js?v=4"></script>
+    <script src="assets/js/script.js?v=6"></script>
     <script src="assets/js/pwa.js?v=1"></script>
 </body>
 </html>

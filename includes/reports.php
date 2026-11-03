@@ -208,7 +208,7 @@ function tg($text) {
     return htmlspecialchars((string)$text, ENT_NOQUOTES, 'UTF-8');
 }
 
-function telegramDailyText(array $day, array $monthToDate, $balance = null) {
+function telegramDailyText(array $day, array $monthToDate, $balance = null, array $upcoming = []) {
     $money = fn($v) => 'E£ ' . number_format($v, 2);
     $date = date('l, j M Y', strtotime($day['from']));
 
@@ -248,6 +248,14 @@ function telegramDailyText(array $day, array $monthToDate, $balance = null) {
     }
     if ($balance !== null) {
         $lines[] = "👛 <b>Balance now: " . $money($balance) . "</b>";
+    }
+
+    if ($upcoming) {
+        $lines[] = "";
+        $lines[] = "🔁 <b>Subscriptions coming up</b>";
+        foreach ($upcoming as $subscription) {
+            $lines[] = "• " . tg($subscription['name']) . " — <b>" . $money($subscription['amount']) . "</b> on " . date('D j M', strtotime($subscription['next']));
+        }
     }
 
     return implode("\n", $lines);

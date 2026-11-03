@@ -398,7 +398,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle expense / income deletion
     document.addEventListener('click', function(e) {
         const button = e.target.closest('.delete-btn');
-        if (!button || !confirm(i18n.confirm_delete)) return;
+        if (!button || !confirm(button.dataset.type === 'subscription' ? i18n.confirm_delete_subscription : i18n.confirm_delete)) return;
 
         fetch('process.php', {
             method: 'DELETE',
@@ -442,6 +442,54 @@ function exportWithPIN() {
     form.submit();
     form.remove();
 }
+
+// --- Subscriptions ---
+// Opens the subscription form empty (add) or filled in (edit)
+function openSubscriptionModal(subscription) {
+    const form = document.getElementById('subscriptionForm');
+    form.reset();
+    form.id.value = subscription ? subscription.id : '';
+    document.getElementById('subscriptionModalTitle').textContent = subscription ? window.APP.i18n.edit_subscription : window.APP.i18n.add_subscription;
+    // The first payment date only matters when adding
+    document.getElementById('subStartGroup').hidden = !!subscription;
+    form.start.required = !subscription;
+    if (subscription) {
+        form.name.value = subscription.name;
+        form.amount.value = subscription.amount;
+        form.category.value = subscription.category;
+        form.place.value = subscription.place || '';
+        form.day.value = subscription.day;
+    }
+    openModal('subscriptionModal');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const start = document.getElementById('subStart');
+    if (start) {
+        // The billing day follows the first payment date unless changed afterwards
+        start.addEventListener('change', () => {
+            if (start.value) document.getElementById('subDay').value = parseInt(start.value.slice(8), 10);
+        });
+    }
+});
+
+document.addEventListener('click', function(e) {
+    const editButton = e.target.closest('[data-sub-edit]');
+    if (editButton) {
+        openSubscriptionModal(JSON.parse(editButton.dataset.subEdit));
+        return;
+    }
+    const toggleButton = e.target.closest('[data-sub-toggle]');
+    if (toggleButton) {
+        const formData = new FormData();
+        formData.set('action', 'subscription_toggle');
+        formData.set('id', toggleButton.dataset.subToggle);
+        fetch('process.php', { method: 'POST', headers: { 'X-CSRF-Token': window.APP.csrf }, body: formData })
+            .then(response => response.json())
+            .then(data => data.success ? location.reload() : alert(window.APP.i18n.error + ': ' + (data.error || window.APP.i18n.went_wrong)))
+            .catch(() => alert(window.APP.i18n.went_wrong));
+    }
+});
 
 // --- Modals ---
 function openModal(id) {
